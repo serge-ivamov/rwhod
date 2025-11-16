@@ -12,8 +12,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ *	  This product includes software developed by the University of
+ *	  California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,21 +31,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef lint
-__attribute__((__used__))
-static const char copyright[] =
-"@(#) Copyright (c) 1983, 1993, 1994\n\
-	The Regents of the University of California.  All rights reserved.\n";
-#endif /* not lint */
-
-#ifndef lint
-__attribute__((__used__))
-static const char sccsid[] = "@(#)ruptime.c	8.2 (Berkeley) 4/5/94";
-#endif /* not lint */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.19 2008/03/17 18:31:43 antoine Exp $");
-
 #include <sys/param.h>
 
 #include <protocols/rwhod.h>
@@ -60,246 +45,248 @@ __FBSDID("$FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.19 2008/03/17 18:31:43 ant
 #include <time.h>
 #include <unistd.h>
 
-struct hs {
-	struct	whod *hs_wd;
-	int	hs_nusers;
+struct hs
+{
+    struct whod *hs_wd;
+    int hs_nusers;
 } *hs;
-struct	whod awhod;
-#define LEFTEARTH(h)		(now - (h) > 4*24*60*60)
-#define	ISDOWN(h)		(now - (h)->hs_wd->wd_recvtime > 11 * 60)
-#define	WHDRSIZE	(sizeof (awhod) - sizeof (awhod.wd_we))
+struct whod awhod;
+#define LEFTEARTH(h) (now - (h) > 4 * 24 * 60 * 60)
+#define ISDOWN(h) (now - (h)->hs_wd->wd_recvtime > 11 * 60)
+#define WHDRSIZE (sizeof(awhod) - sizeof(awhod.wd_we))
 
 size_t nhosts;
 time_t now;
 int rflg = 1;
 DIR *dirp;
 
-int	 hscmp(const void *, const void *);
-char	*interval(time_t, const char *);
-int	 lcmp(const void *, const void *);
-void	 morehosts(void);
-void	 ruptime(const char *, int, int (*)(const void *, const void *));
-int	 tcmp(const void *, const void *);
-int	 ucmp(const void *, const void *);
-void	 usage(void);
+int hscmp(const void *, const void *);
+char *interval(time_t, const char *);
+int lcmp(const void *, const void *);
+void morehosts(void);
+void ruptime(const char *, int, int (*)(const void *, const void *));
+int tcmp(const void *, const void *);
+int ucmp(const void *, const void *);
+void usage(void);
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-	int (*cmp)(const void *, const void *);
-	int aflg, ch;
+    int (*cmp)(const void *, const void *);
+    int aflg, ch;
 
-	aflg = 0;
-	cmp = hscmp;
-	while ((ch = getopt(argc, argv, "alrut")) != -1)
-		switch (ch) {
-		case 'a':
-			aflg = 1;
-			break;
-		case 'l':
-			cmp = lcmp;
-			break;
-		case 'r':
-			rflg = -1;
-			break;
-		case 't':
-			cmp = tcmp;
-			break;
-		case 'u':
-			cmp = ucmp;
-			break;
-		default:
-			usage();
-		}
-	argc -= optind;
-	argv += optind;
+    aflg = 0;
+    cmp = hscmp;
+    while ((ch = getopt(argc, argv, "alrut")) != -1)
+        switch (ch)
+        {
+        case 'a':
+            aflg = 1;
+            break;
+        case 'l':
+            cmp = lcmp;
+            break;
+        case 'r':
+            rflg = -1;
+            break;
+        case 't':
+            cmp = tcmp;
+            break;
+        case 'u':
+            cmp = ucmp;
+            break;
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
 
-	if (chdir(_PATH_RWHODIR) || (dirp = opendir(".")) == NULL)
-		err(1, "%s", _PATH_RWHODIR);
+    if (chdir(PATH_RWHODIR) || (dirp = opendir(".")) == NULL)
+        err(1, "%s", PATH_RWHODIR);
 
-	ruptime(*argv, aflg, cmp);
-	while (*argv++ != NULL) {
-		if (*argv == NULL)
-			break;
-		ruptime(*argv, aflg, cmp);
-	}
-	exit(0);
-}
+    ruptime(*argv, aflg, cmp);
+    while (*argv++ != NULL)
+    {
+        if (*argv == NULL)
+            break;
+        ruptime(*argv, aflg, cmp);
+    }
+    exit(0);
+} // main()
 
-char *
-interval(time_t tval, const char *updown)
+char *interval(time_t tval, const char *updown)
 {
-	static char resbuf[32];
-	int days, hours, minutes;
+    static char resbuf[32];
+    int days, hours, minutes;
 
-	if (tval < 0) {
-		(void)snprintf(resbuf, sizeof(resbuf), "   %s ??:??", updown);
-		return (resbuf);
-	}
-						/* round to minutes. */
-	minutes = (tval + (60 - 1)) / 60;
-	hours = minutes / 60;
-	minutes %= 60;
-	days = hours / 24;
-	hours %= 24;
-	if (days)
-		(void)snprintf(resbuf, sizeof(resbuf),
-		    "%s %3d+%02d:%02d", updown, days, hours, minutes);
-	else
-		(void)snprintf(resbuf, sizeof(resbuf),
-		    "%s     %2d:%02d", updown, hours, minutes);
-	return (resbuf);
-}
+    if (tval < 0)
+    {
+        (void)snprintf(resbuf, sizeof(resbuf), "   %s ??:??", updown);
+        return (resbuf);
+    }
+    /* round to minutes. */
+    minutes = (tval + (60 - 1)) / 60;
+    hours = minutes / 60;
+    minutes %= 60;
+    days = hours / 24;
+    hours %= 24;
+    if (days)
+        (void)snprintf(resbuf, sizeof(resbuf),
+                       "%s %3d+%02d:%02d", updown, days, hours, minutes);
+    else
+        (void)snprintf(resbuf, sizeof(resbuf),
+                       "%s     %2d:%02d", updown, hours, minutes);
+    return (resbuf);
+} // interval()
 
-#define	HS(a)	((const struct hs *)(a))
+#define HS(a) ((const struct hs *)(a))
 
 /* Alphabetical comparison. */
-int
-hscmp(const void *a1, const void *a2)
+int hscmp(const void *a1, const void *a2)
 {
-	return (rflg *
-	    strcmp(HS(a1)->hs_wd->wd_hostname, HS(a2)->hs_wd->wd_hostname));
-}
+    return (rflg *
+            strcmp(HS(a1)->hs_wd->wd_hostname, HS(a2)->hs_wd->wd_hostname));
+} // hscmp()
 
 /* Load average comparison. */
-int
-lcmp(const void *a1, const void *a2)
+int lcmp(const void *a1, const void *a2)
 {
-	if (ISDOWN(HS(a1)))
-		if (ISDOWN(HS(a2)))
-			return (tcmp(a1, a2));
-		else
-			return (rflg);
-	else if (ISDOWN(HS(a2)))
-		return (-rflg);
-	else
-		return (rflg *
-		   (HS(a2)->hs_wd->wd_loadav[0] - HS(a1)->hs_wd->wd_loadav[0]));
-}
+    if (ISDOWN(HS(a1)))
+        if (ISDOWN(HS(a2)))
+            return (tcmp(a1, a2));
+        else
+            return (rflg);
+    else if (ISDOWN(HS(a2)))
+        return (-rflg);
+    else
+        return (rflg *
+                (HS(a2)->hs_wd->wd_loadav[0] - HS(a1)->hs_wd->wd_loadav[0]));
+} // lcmp()
 
-void
-ruptime(const char *host, int aflg, int (*cmp)(const void *, const void *))
+void ruptime(const char *host, int aflg, int (*cmp)(const void *, const void *))
 {
-	struct hs *hsp;
-	struct whod *wd;
-	struct whoent *we;
-	struct dirent *dp;
-	const char *hostname;
-	char buf[sizeof(struct whod)];
-	int fd, i, maxloadav;
-	size_t hspace;
-	u_int cc;
+    struct hs *hsp;
+    struct whod *wd;
+    struct whoent *we;
+    struct dirent *dp;
+    const char *hostname;
+    char buf[sizeof(struct whod)];
+    int fd, i, maxloadav;
+    size_t hspace;
+    u_int cc;
 
-	rewinddir(dirp);
-	hsp = NULL;
-	maxloadav = -1;
-	(void)time(&now);
-	for (nhosts = hspace = 0; (dp = readdir(dirp)) != NULL;) {
-		if (dp->d_ino == 0 || strncmp(dp->d_name, "whod.", 5) != 0)
-			continue;
-		if ((fd = open(dp->d_name, O_RDONLY, 0)) < 0) {
-			warn("%s", dp->d_name);
-			continue;
-		}
-		cc = read(fd, buf, sizeof(struct whod));
-		(void)close(fd);
-		if (host != NULL) {
-			hostname = ((struct whod *)buf)->wd_hostname;
-			if (strcasecmp(hostname, host) != 0)
-				continue;
-		}
+    rewinddir(dirp);
+    hsp = NULL;
+    maxloadav = -1;
+    (void)time(&now);
+    for (nhosts = hspace = 0; (dp = readdir(dirp)) != NULL;)
+    {
+        if (dp->d_ino == 0 || strncmp(dp->d_name, "whod.", 5) != 0)
+            continue;
+        if ((fd = open(dp->d_name, O_RDONLY, 0)) < 0)
+        {
+            warn("%s", dp->d_name);
+            continue;
+        }
+        cc = read(fd, buf, sizeof(struct whod));
+        (void)close(fd);
+        if (host != NULL)
+        {
+            hostname = ((struct whod *)buf)->wd_hostname;
+            if (strcasecmp(hostname, host) != 0)
+                continue;
+        }
 
-		if (cc < WHDRSIZE)
-			continue;
-		if (LEFTEARTH(((struct whod *)buf)->wd_recvtime))
-			continue;
-		if (nhosts == hspace) {
-			if ((hs =
-			    realloc(hs, (hspace += 40) * sizeof(*hs))) == NULL)
-				err(1, NULL);
-			hsp = hs + nhosts;
-		}
+        if (cc < WHDRSIZE)
+            continue;
+        if (LEFTEARTH(((struct whod *)buf)->wd_recvtime))
+            continue;
+        if (nhosts == hspace)
+        {
+            if ((hs =
+                     realloc(hs, (hspace += 40) * sizeof(*hs))) == NULL)
+                err(1, NULL);
+            hsp = hs + nhosts;
+        }
 
-		if ((hsp->hs_wd = malloc((size_t)WHDRSIZE)) == NULL)
-			err(1, NULL);
-		memmove(hsp->hs_wd, buf, (size_t)WHDRSIZE);
+        if ((hsp->hs_wd = malloc((size_t)WHDRSIZE)) == NULL)
+            err(1, NULL);
+        memmove(hsp->hs_wd, buf, (size_t)WHDRSIZE);
 
-		for (wd = (struct whod *)buf, i = 0; i < 2; ++i)
-			if (wd->wd_loadav[i] > maxloadav)
-				maxloadav = wd->wd_loadav[i];
+        for (wd = (struct whod *)buf, i = 0; i < 2; ++i)
+            if (wd->wd_loadav[i] > maxloadav)
+                maxloadav = wd->wd_loadav[i];
 
-		for (hsp->hs_nusers = 0,
-		    we = (struct whoent *)(buf + cc); --we >= wd->wd_we;)
-			if (aflg || we->we_idle < 3600)
-				++hsp->hs_nusers;
-		++hsp;
-		++nhosts;
-	}
-	if (nhosts == 0) {
-		if (host == NULL)
-			errx(1, "no hosts in %s", _PATH_RWHODIR);
-		else
-			warnx("host %s not in %s", host, _PATH_RWHODIR);
-	}
+        for (hsp->hs_nusers = 0,
+            we = (struct whoent *)(buf + cc);
+             --we >= wd->wd_we;)
+            if (aflg || we->we_idle < 3600)
+                ++hsp->hs_nusers;
+        ++hsp;
+        ++nhosts;
+    }
+    if (nhosts == 0)
+    {
+        if (host == NULL)
+            errx(1, "no hosts in %s", PATH_RWHODIR);
+        else
+            warnx("host %s not in %s", host, PATH_RWHODIR);
+    }
 
-	qsort(hs, nhosts, sizeof(hs[0]), cmp);
-	for (i = 0; i < (int)nhosts; i++) {
-		hsp = &hs[i];
-		if (ISDOWN(hsp)) {
-			(void)printf("%-12.12s%s\n", hsp->hs_wd->wd_hostname,
-			    interval(now - hsp->hs_wd->wd_recvtime, "down"));
-			continue;
-		}
-		(void)printf(
-		    "%-12.12s%s,  %4d user%s  load %*.2f, %*.2f, %*.2f\n",
-		    hsp->hs_wd->wd_hostname,
-		    interval((time_t)hsp->hs_wd->wd_sendtime -
-			(time_t)hsp->hs_wd->wd_boottime, "  up"),
-		    hsp->hs_nusers,
-		    hsp->hs_nusers == 1 ? ", " : "s,",
-		    maxloadav >= 1000 ? 5 : 4,
-			hsp->hs_wd->wd_loadav[0] / 100.0,
-		    maxloadav >= 1000 ? 5 : 4,
-		        hsp->hs_wd->wd_loadav[1] / 100.0,
-		    maxloadav >= 1000 ? 5 : 4,
-		        hsp->hs_wd->wd_loadav[2] / 100.0);
-		free(hsp->hs_wd);
-	}
-	free(hs);
-	hs = NULL;
-}
+    qsort(hs, nhosts, sizeof(hs[0]), cmp);
+    for (i = 0; i < (int)nhosts; i++)
+    {
+        hsp = &hs[i];
+        if (ISDOWN(hsp))
+        {
+            (void)printf("%-12.12s%s\n", hsp->hs_wd->wd_hostname,
+                         interval(now - hsp->hs_wd->wd_recvtime, "down"));
+            continue;
+        }
+        (void)printf(
+            "%-12.12s%s,  %4d user%s  load %*.2f, %*.2f, %*.2f\n",
+            hsp->hs_wd->wd_hostname,
+            interval((time_t)hsp->hs_wd->wd_sendtime -
+                         (time_t)hsp->hs_wd->wd_boottime,
+                     "  up"),
+            hsp->hs_nusers,
+            hsp->hs_nusers == 1 ? ", " : "s,",
+            maxloadav >= 1000 ? 5 : 4,
+            hsp->hs_wd->wd_loadav[0] / 100.0,
+            maxloadav >= 1000 ? 5 : 4,
+            hsp->hs_wd->wd_loadav[1] / 100.0,
+            maxloadav >= 1000 ? 5 : 4,
+            hsp->hs_wd->wd_loadav[2] / 100.0);
+        free(hsp->hs_wd);
+    }
+    free(hs);
+    hs = NULL;
+} // ruptime()
 
 /* Number of users comparison. */
-int
-ucmp(const void *a1, const void *a2)
+int ucmp(const void *a1, const void *a2)
 {
-	if (ISDOWN(HS(a1)))
-		if (ISDOWN(HS(a2)))
-			return (tcmp(a1, a2));
-		else
-			return (rflg);
-	else if (ISDOWN(HS(a2)))
-		return (-rflg);
-	else
-		return (rflg * (HS(a2)->hs_nusers - HS(a1)->hs_nusers));
-}
+    if (ISDOWN(HS(a1)))
+        if (ISDOWN(HS(a2)))
+            return (tcmp(a1, a2));
+        else
+            return (rflg);
+    else if (ISDOWN(HS(a2)))
+        return (-rflg);
+    else
+        return (rflg * (HS(a2)->hs_nusers - HS(a1)->hs_nusers));
+} // ucmp()
 
 /* Uptime comparison. */
-int
-tcmp(const void *a1, const void *a2)
+int tcmp(const void *a1, const void *a2)
 {
-	return (rflg * (
-		(ISDOWN(HS(a2)) ? HS(a2)->hs_wd->wd_recvtime - now
-		    : HS(a2)->hs_wd->wd_sendtime - HS(a2)->hs_wd->wd_boottime)
-		-
-		(ISDOWN(HS(a1)) ? HS(a1)->hs_wd->wd_recvtime - now
-		    : HS(a1)->hs_wd->wd_sendtime - HS(a1)->hs_wd->wd_boottime)
-	));
-}
+    return (rflg * ((ISDOWN(HS(a2)) ? HS(a2)->hs_wd->wd_recvtime - now
+                                    : HS(a2)->hs_wd->wd_sendtime - HS(a2)->hs_wd->wd_boottime) -
+                    (ISDOWN(HS(a1)) ? HS(a1)->hs_wd->wd_recvtime - now
+                                    : HS(a1)->hs_wd->wd_sendtime - HS(a1)->hs_wd->wd_boottime)));
+} // tcmp()
 
-void
-usage(void)
+void usage(void)
 {
-	(void)fprintf(stderr, "usage: ruptime [-alrtu] [host ...]\n");
-	exit(1);
-}
+    (void)fprintf(stderr, "usage: ruptime [-alrtu] [host ...]\n");
+    exit(1);
+} // usage()

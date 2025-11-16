@@ -1,0 +1,9 @@
+RWHOD_SERVICE="ru.ec.rwhod"
+LAUNCHD_PLIST="$RWHOD_SERVICE.plist"
+LAUNCHDAEMONS_FOLDER="/Library/LaunchDaemons"
+INSTALL_PLIST_PATH="$LAUNCHDAEMONS_FOLDER/$LAUNCHD_PLIST"
+
+RWHOD_SPOOL="/var/rwho"
+RWHOD_PATH="/usr/local/sbin"
+RTOOLS_PATH="/usr/local/bin"
+MAN_PATH="/usr/local/man"

@@ -4,5 +4,7 @@ Icon
 ._*
 
 # Build
-/out
-
+/!
+/out/*
+/pkg
+/pkg-*.tgz
