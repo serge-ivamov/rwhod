@@ -6,7 +6,7 @@
     $ git clone https://github.com/serge-ivamov/rwhod
     $ make install
   ```
-- or download from releases and run ```installer.sh```
+- or download it from releases and run ```installer.sh```
 
 ### v1.0.0 Original sources
 - [rwhod](https://github.com/apple-open-source/macos/blob/10.12.6/remote_cmds/rwhod.tproj)
