@@ -91,13 +91,13 @@ log-rwhod-1d:
 
 clean:
 	rm -f out/rwhod out/rwho out/ruptime out/rwhod.debug out/rwho.debug out/ruptime.debug
-	rm -f pkg-*.tgz
+	rm -f rwhod-*.tgz
 	rm -rf pkg/
 
 pkg:	clean out/rwhod out/rwho out/ruptime
-	mkdir -p pkg
-	cp -r launchd man out installer.sh uninstaller.sh vars.sh pkg
-	tar zcvf pkg-${PROJECT_VERSION}.tgz pkg/
+	mkdir -p pkg/rwhod-${PROJECT_VERSION}
+	cp -r launchd man out installer.sh uninstaller.sh vars.sh pkg/rwhod-${PROJECT_VERSION}/
+	cd pkg && tar zcvf ../rwhod-${PROJECT_VERSION}.tgz rwhod-${PROJECT_VERSION}/
 
 install: install-rwhod-spool install-rwhod install-rwho install-ruptime install-man install-launchd launch-enable launch-start launch-status
 uninstall: launch-stop launch-disable uninstall-launchd uninstall-rwhod uninstall-rwho uninstall-ruptime uninstall-man
