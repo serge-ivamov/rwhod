@@ -14,7 +14,8 @@
     </array>
 
     <key>RunAtLoad</key><true/>
-    <key>KeepAlive</key><true/>
+    <key>KeepAlive</key>
+        <dict><key>AfterInitialProcessCreation</key><true/></dict>
 
     <key>UserName</key><string>daemon</string>
     <key>GroupName</key><string>daemon</string>

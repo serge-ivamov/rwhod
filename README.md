@@ -1,7 +1,10 @@
 # rwhod, ruptime, rwho for modern macOS with launchd.
 
+### v1.0.2
+- Fix for too fast start on booting the system.
+
 ### v1.0.1 launchd version
-- how to install:
+- How to install:
   ```sh
     $ git clone https://github.com/serge-ivamov/rwhod
     $ make install
